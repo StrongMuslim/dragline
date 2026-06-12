@@ -1,4 +1,4 @@
-const SUPPORTED_LANGS = ['ko', 'uz', 'ru', 'en'];
+const SUPPORTED_LANGS = ['kr', 'uz', 'ru', 'en'];
 const DEFAULT_LANG = 'en';
 
 let currentLang = DEFAULT_LANG;
