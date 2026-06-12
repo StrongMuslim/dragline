@@ -1,16 +1,57 @@
-const SHEETDB_URL = 'https://sheetdb.io/api/v1/kubih41fg2jbb';
+// Replace with your Google Sheet ID from the URL:
+// https://docs.google.com/spreadsheets/d/SHEET_ID/edit
+const SHEET_ID = 'YOUR_SHEET_ID_HERE';
+const GVIZ_URL = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:json&sheet=Sheet1`;
+
+async function _fetchAllListings() {
+  const res  = await fetch(GVIZ_URL);
+  const text = await res.text();
+  const data = JSON.parse(text.slice(text.indexOf('{'), text.lastIndexOf('}') + 1));
+
+  return (data.table.rows || []).map(row => {
+    const c = row.c || [];
+    const v = (i, def = '') => {
+      try { const cell = c[i]; return (cell && cell.v !== null && cell.v !== undefined) ? cell.v : def; }
+      catch { return def; }
+    };
+    const s = i => {
+      const val = v(i);
+      if (val === '' || val == null) return '';
+      if (typeof val === 'number' && Number.isInteger(val)) return String(val);
+      return String(val).trim();
+    };
+
+    const rawId = v(0);
+    if (rawId === '' || rawId == null) return null;
+
+    return {
+      id:                s(0),
+      category:          s(1),
+      brand:             s(2),
+      model:             s(3),
+      year:              v(4) != null && v(4) !== '' ? Number(v(4)) : null,
+      hours:             v(5) != null && v(5) !== '' ? Number(v(5)) : null,
+      condition:         s(6),
+      compatible_models: s(7),
+      price_krw:         Number(v(8)) || 0,
+      location_kr:       s(9),
+      status:            s(10) || 'available',
+      name_kr:           s(11),
+      name_uz:           s(12),
+      name_ru:           s(13),
+      name_en:           s(14),
+      desc_kr:           s(15),
+      desc_uz:           s(16),
+      desc_ru:           s(17),
+      desc_en:           s(18),
+      photos:            s(19),
+    };
+  }).filter(Boolean);
+}
 
 async function getListing(id) {
-  const res = await fetch(`${SHEETDB_URL}/search?id=${id}`);
-  const arr = await res.json();
-  const l = arr[0] || null;
-  if (!l) return null;
-  return {
-    ...l,
-    year:      l.year      ? Number(l.year)      : null,
-    hours:     l.hours     ? Number(l.hours)     : null,
-    price_krw: Number(l.price_krw) || 0,
-  };
+  const listings = await _fetchAllListings();
+  return listings.find(l => l.id === id) || null;
 }
 
 let currentListing = null;
@@ -40,25 +81,22 @@ function renderListing(l) {
   galleryPhotos = l.photos.split(',').map(s => s.trim()).filter(Boolean);
   renderGallery();
 
-  // Title & status
   document.getElementById('listing-title').textContent = name;
   const pill = document.getElementById('listing-status');
   pill.textContent = t('card_' + l.status);
   pill.className = `status-pill status-pill--${l.status}`;
 
-  // Price
   const usd = krwToUsd(l.price_krw);
   document.getElementById('listing-price-krw').textContent = formatKrw(l.price_krw);
   document.getElementById('listing-price-usd').textContent = formatUsd(usd);
 
-  // Specs table — only show rows with values
   const rows = [
-    ['listing_brand',    l.brand],
-    ['listing_model',    l.model],
-    ['listing_year',     l.year  ? String(l.year)                        : null],
-    ['listing_hours',    l.hours ? `${l.hours.toLocaleString()} ${t('card_hours')}` : null],
-    ['listing_condition',l.condition],
-    ['listing_location', l.location_kr],
+    ['listing_brand',     l.brand],
+    ['listing_model',     l.model],
+    ['listing_year',      l.year  ? String(l.year)                        : null],
+    ['listing_hours',     l.hours ? `${l.hours.toLocaleString()} ${t('card_hours')}` : null],
+    ['listing_condition', l.condition],
+    ['listing_location',  l.location_kr],
     ['listing_compatible', l.compatible_models || null],
   ];
 
@@ -71,7 +109,6 @@ function renderListing(l) {
       </tr>`)
     .join('');
 
-  // Description
   const descEl = document.getElementById('listing-desc');
   if (desc) {
     descEl.textContent = desc;
@@ -79,13 +116,11 @@ function renderListing(l) {
   } else {
     descEl.closest('.listing-desc-wrap').style.display = 'none';
   }
-
-  // Contact block static strings (already handled by applyTranslations via data-i18n)
 }
 
 function renderGallery() {
-  const mainImg   = document.getElementById('gallery-main-img');
-  const thumbsEl  = document.getElementById('gallery-thumbs');
+  const mainImg  = document.getElementById('gallery-main-img');
+  const thumbsEl = document.getElementById('gallery-thumbs');
 
   mainImg.src = galleryPhotos[activeThumb] || '';
   mainImg.alt = currentListing ? (currentListing[`name_${currentLang}`] || '') : '';
@@ -102,7 +137,6 @@ function setThumb(i) {
   renderGallery();
 }
 
-// Re-render when language changes
 document.addEventListener('langchange', () => {
   if (currentListing) renderListing(currentListing);
 });
