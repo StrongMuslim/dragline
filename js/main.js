@@ -1,6 +1,6 @@
 // Replace with your Google Sheet ID from the URL:
 // https://docs.google.com/spreadsheets/d/SHEET_ID/edit
-const SHEET_ID = 'YOUR_SHEET_ID_HERE';
+const SHEET_ID = '1izy_C-QA3Pm6SKSpjDkGTgGmcBouEvu2cU4JmWyAdy0';
 const GVIZ_URL = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:json&sheet=Sheet1`;
 
 async function getListings() {
