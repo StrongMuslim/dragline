@@ -3,6 +3,8 @@ import json
 import logging
 import requests
 import gspread
+import cloudinary
+import cloudinary.uploader
 from google.oauth2.service_account import Credentials
 from aiohttp import web
 from dotenv import load_dotenv
@@ -31,6 +33,12 @@ COLUMNS = [
     'desc_kr', 'desc_uz', 'desc_ru', 'desc_en',
     'photos'
 ]
+
+cloudinary.config(
+    cloud_name=os.getenv('CLOUDINARY_CLOUD_NAME'),
+    api_key=os.getenv('CLOUDINARY_API_KEY'),
+    api_secret=os.getenv('CLOUDINARY_API_SECRET')
+)
 
 BRAND_SUGGESTIONS = [
     'Hyundai', 'Doosan', 'Yanmar', 'Kobelco',
@@ -454,30 +462,56 @@ async def add_compat(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if text == "Отмена":
         return await add_cancel(update, context)
     context.user_data['new_listing']['compatible_models'] = '' if text == "Пропустить" else text
+    context.user_data['new_listing']['photos_list'] = []
     await update.message.reply_text(
-        "📸 Ссылки на фото с Cloudinary (папка <b>dragline/</b>).\n\n"
-        "Несколько фото — через запятую:\n"
-        "<code>https://res.cloudinary.com/.../1.jpg, https://res.cloudinary.com/.../2.jpg</code>",
+        "📸 Отправьте фото (можно несколько).\n"
+        "Когда все загрузите — нажмите <b>Готово</b>.",
         parse_mode='HTML',
-        reply_markup=cancel_kb()
+        reply_markup=ReplyKeyboardMarkup([["Готово"], ["Отмена"]], resize_keyboard=True)
     )
     return ADD_PHOTOS_URL
 
 async def add_photos_url(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    text = update.message.text.strip()
+    # Photo received — upload to Cloudinary
+    if update.message.photo:
+        photo = update.message.photo[-1]
+        file = await photo.get_file()
+        file_bytes = await file.download_as_bytearray()
+        try:
+            result = cloudinary.uploader.upload(
+                bytes(file_bytes),
+                folder="dragline",
+                transformation=[{"width": 1200, "height": 900, "crop": "limit", "quality": "auto"}]
+            )
+            url = result['secure_url']
+            context.user_data['new_listing']['photos_list'].append(url)
+            count = len(context.user_data['new_listing']['photos_list'])
+            await update.message.reply_text(
+                f"✅ Фото {count} загружено.\nОтправьте ещё или нажмите <b>Готово</b>.",
+                parse_mode='HTML'
+            )
+        except Exception as e:
+            await update.message.reply_text(f"❌ Ошибка загрузки: {e}")
+        return ADD_PHOTOS_URL
+
+    text = update.message.text.strip() if update.message.text else ''
     if text == "Отмена":
         return await add_cancel(update, context)
-    parts = [p.strip() for p in text.replace('\n', ',').split(',') if p.strip()]
-    if not parts:
-        await update.message.reply_text("❌ Введите хотя бы одну ссылку.")
-        return ADD_PHOTOS_URL
-    context.user_data['new_listing']['photos'] = ','.join(parts)
-    await update.message.reply_text(
-        "🇷🇺 Название лота на <b>русском</b>:",
-        parse_mode='HTML',
-        reply_markup=cancel_kb()
-    )
-    return ADD_NAME_RU
+    if text == "Готово":
+        photos_list = context.user_data['new_listing'].get('photos_list', [])
+        if not photos_list:
+            await update.message.reply_text("❌ Отправьте хотя бы одно фото.")
+            return ADD_PHOTOS_URL
+        context.user_data['new_listing']['photos'] = ','.join(photos_list)
+        await update.message.reply_text(
+            "🇷🇺 Название лота на <b>русском</b>:",
+            parse_mode='HTML',
+            reply_markup=cancel_kb()
+        )
+        return ADD_NAME_RU
+
+    await update.message.reply_text("Отправьте фото или нажмите Готово.")
+    return ADD_PHOTOS_URL
 
 async def add_name_ru(update: Update, context: ContextTypes.DEFAULT_TYPE):
     text = update.message.text.strip()
@@ -822,7 +856,10 @@ def main():
             ADD_PRICE:      [MessageHandler(filters.TEXT & ~filters.COMMAND, add_price)],
             ADD_LOC:        [MessageHandler(filters.TEXT & ~filters.COMMAND, add_loc)],
             ADD_COMPAT:     [MessageHandler(filters.TEXT & ~filters.COMMAND, add_compat)],
-            ADD_PHOTOS_URL: [MessageHandler(filters.TEXT & ~filters.COMMAND, add_photos_url)],
+            ADD_PHOTOS_URL: [
+                MessageHandler(filters.PHOTO, add_photos_url),
+                MessageHandler(filters.TEXT & ~filters.COMMAND, add_photos_url),
+            ],
             ADD_NAME_RU:    [MessageHandler(filters.TEXT & ~filters.COMMAND, add_name_ru)],
             ADD_NAME_KR:    [MessageHandler(filters.TEXT & ~filters.COMMAND, add_name_kr)],
             ADD_NAME_UZ:    [MessageHandler(filters.TEXT & ~filters.COMMAND, add_name_uz)],
