@@ -1,9 +1,14 @@
-// ── To switch to SheetDB: replace getListings() body with:
-//    const res = await fetch('https://sheetdb.io/api/v1/YOUR_ID');
-//    return res.json();
+const SHEETDB_URL = 'https://sheetdb.io/api/v1/kubih41fg2jbb';
 
 async function getListings() {
-  return PLACEHOLDER_LISTINGS;
+  const res = await fetch(SHEETDB_URL);
+  const rows = await res.json();
+  return rows.map(l => ({
+    ...l,
+    year:      l.year      ? Number(l.year)      : null,
+    hours:     l.hours     ? Number(l.hours)     : null,
+    price_krw: Number(l.price_krw) || 0,
+  }));
 }
 
 let allListings = [];
