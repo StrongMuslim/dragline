@@ -32,7 +32,7 @@ function krwToUsd(krw) {
 }
 
 function formatKrw(krw) {
-  return (krw / 1000000).toFixed(1) + ' млн ₩';
+  return (krw / 1000000).toFixed(1) + ' ' + t('unit_mln_krw');
 }
 
 function formatUsd(usd) {

@@ -1,74 +1,42 @@
-// Replace with your Google Sheet ID from the URL:
-// https://docs.google.com/spreadsheets/d/SHEET_ID/edit
-const SHEET_ID = '1izy_C-QA3Pm6SKSpjDkGTgGmcBouEvu2cU4JmWyAdy0';
-const GVIZ_URL = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:json&sheet=Sheet1`;
-
-async function _fetchAllListings() {
-  const res  = await fetch(GVIZ_URL);
-  const text = await res.text();
-  const data = JSON.parse(text.slice(text.indexOf('{'), text.lastIndexOf('}') + 1));
-
-  return (data.table.rows || []).map(row => {
-    const c = row.c || [];
-    const v = (i, def = '') => {
-      try { const cell = c[i]; return (cell && cell.v !== null && cell.v !== undefined) ? cell.v : def; }
-      catch { return def; }
-    };
-    const s = i => {
-      const val = v(i);
-      if (val === '' || val == null) return '';
-      if (typeof val === 'number' && Number.isInteger(val)) return String(val);
-      return String(val).trim();
-    };
-
-    const rawId = v(0);
-    if (rawId === '' || rawId == null) return null;
-
-    return {
-      id:                s(0),
-      category:          s(1),
-      brand:             s(2),
-      model:             s(3),
-      year:              v(4) != null && v(4) !== '' ? Number(v(4)) : null,
-      hours:             v(5) != null && v(5) !== '' ? Number(v(5)) : null,
-      condition:         s(6),
-      compatible_models: s(7),
-      price_krw:         Number(v(8)) || 0,
-      location_kr:       s(9),
-      status:            s(10) || 'available',
-      name_kr:           s(11),
-      name_uz:           s(12),
-      name_ru:           s(13),
-      name_en:           s(14),
-      desc_kr:           s(15),
-      desc_uz:           s(16),
-      desc_ru:           s(17),
-      desc_en:           s(18),
-      photos:            s(19),
-    };
-  }).filter(Boolean);
-}
-
-async function getListing(id) {
-  const listings = await _fetchAllListings();
-  return listings.find(l => l.id === id) || null;
-}
-
 let currentListing = null;
 let galleryPhotos = [];
 let activeThumb = 0;
+let lightboxOpen = false;
+let newIds = new Set();
 
 async function initListing() {
   const params = new URLSearchParams(location.search);
   const id = params.get('id');
   if (!id) { location.href = 'index.html'; return; }
 
-  await Promise.all([fetchRate(), initI18n()]);
+  let listings;
+  try {
+    await Promise.all([fetchRate(), initI18n()]);
+    listings = await fetchListings();
+  } catch (err) {
+    showErrorState('listing-status-box');
+    return;
+  }
 
-  currentListing = await getListing(id);
+  newIds = computeNewIds(listings);
+  currentListing = listings.find(l => l.id === id) || null;
   if (!currentListing) { location.href = 'index.html'; return; }
 
-  renderListing(currentListing);
+  try {
+    renderListing(currentListing);
+    renderSimilar(listings, currentListing);
+    setupShareButton();
+    setupLightbox();
+    showListingContent();
+  } catch (err) {
+    console.error('Dragline: failed to render listing', err);
+    showErrorState('listing-status-box', 'error_render');
+  }
+}
+
+function showListingContent() {
+  document.getElementById('listing-status-box').style.display = 'none';
+  document.getElementById('listing-layout').style.display = '';
 }
 
 function renderListing(l) {
@@ -135,10 +103,110 @@ function renderGallery() {
 function setThumb(i) {
   activeThumb = i;
   renderGallery();
+  if (lightboxOpen) updateLightboxImg();
+}
+
+let cachedListings = [];
+
+function renderSimilar(listings, current) {
+  cachedListings = listings;
+  const section = document.getElementById('similar-section');
+  const grid    = document.getElementById('similar-grid');
+
+  const pool = listings.filter(l => l.id !== current.id && l.status === 'available');
+  let similar = pool.filter(l => l.category === current.category && l.brand === current.brand);
+  if (similar.length < 4) {
+    const more = pool.filter(l => l.category === current.category && !similar.includes(l));
+    similar = similar.concat(more);
+  }
+  similar = similar.slice(0, 4);
+
+  if (!similar.length) { section.style.display = 'none'; return; }
+
+  grid.innerHTML = similar.map(similarCardHTML).join('');
+  section.style.display = 'block';
+}
+
+function similarCardHTML(l) {
+  return buildCardHTML(l, { asLink: true, showMeta: false, showDetailsButton: false, newIds });
+}
+
+function setupShareButton() {
+  document.getElementById('share-btn').addEventListener('click', async () => {
+    const name = currentListing[`name_${currentLang}`] || currentListing.name_en;
+    const shareData = { title: `${name} — Dragline`, url: location.href };
+    if (navigator.share) {
+      try { await navigator.share(shareData); } catch { /* user cancelled */ }
+    } else {
+      try {
+        await navigator.clipboard.writeText(location.href);
+        showToast(t('share_copied'));
+      } catch {
+        showToast(t('share_failed'));
+      }
+    }
+  });
+}
+
+function showToast(msg) {
+  let toast = document.getElementById('toast');
+  if (!toast) {
+    toast = document.createElement('div');
+    toast.id = 'toast';
+    toast.className = 'toast';
+    document.body.appendChild(toast);
+  }
+  toast.textContent = msg;
+  toast.classList.add('toast--show');
+  clearTimeout(showToast._timer);
+  showToast._timer = setTimeout(() => toast.classList.remove('toast--show'), 2200);
+}
+
+function setupLightbox() {
+  const overlay = document.getElementById('lightbox');
+  document.getElementById('gallery-main-img').addEventListener('click', openLightbox);
+  document.getElementById('lightbox-close').addEventListener('click', closeLightbox);
+  document.getElementById('lightbox-prev').addEventListener('click', () => navLightbox(-1));
+  document.getElementById('lightbox-next').addEventListener('click', () => navLightbox(1));
+  overlay.addEventListener('click', e => { if (e.target === overlay) closeLightbox(); });
+  document.addEventListener('keydown', e => {
+    if (!lightboxOpen) return;
+    if (e.key === 'Escape')    closeLightbox();
+    if (e.key === 'ArrowLeft')  navLightbox(-1);
+    if (e.key === 'ArrowRight') navLightbox(1);
+  });
+}
+
+function openLightbox() {
+  if (!galleryPhotos.length) return;
+  lightboxOpen = true;
+  document.getElementById('lightbox').classList.add('active');
+  const multi = galleryPhotos.length > 1;
+  document.getElementById('lightbox-prev').style.display = multi ? 'flex' : 'none';
+  document.getElementById('lightbox-next').style.display = multi ? 'flex' : 'none';
+  updateLightboxImg();
+}
+
+function closeLightbox() {
+  lightboxOpen = false;
+  document.getElementById('lightbox').classList.remove('active');
+}
+
+function navLightbox(dir) {
+  activeThumb = (activeThumb + dir + galleryPhotos.length) % galleryPhotos.length;
+  renderGallery();
+  updateLightboxImg();
+}
+
+function updateLightboxImg() {
+  document.getElementById('lightbox-img').src = galleryPhotos[activeThumb] || '';
 }
 
 document.addEventListener('langchange', () => {
-  if (currentListing) renderListing(currentListing);
+  if (currentListing) {
+    renderListing(currentListing);
+    renderSimilar(cachedListings, currentListing);
+  }
 });
 
 document.addEventListener('DOMContentLoaded', initListing);

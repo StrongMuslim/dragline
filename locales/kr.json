@@ -1,6 +1,7 @@
 {
   "site_name": "Dragline",
   "tagline": "한국 중고 건설기계",
+  "hero_sub": "굴착기, 부품, 건설기계 — 우즈베키스탄 · 키르기스스탄 직접 배송",
   "nav_catalog": "카탈로그",
   "nav_about": "소개",
   "filter_category": "카테고리",
@@ -52,5 +53,24 @@
   "about_contact_text": "문의해 주시면 모든 질문에 답변드리고 배송 비용을 계산해 드리겠습니다.",
   "no_results": "검색 결과 없음 — 필터를 변경해 보세요",
   "loading": "로딩중...",
-  "footer_text": "© 2025 Dragline. 한국 중고 건설기계."
+  "footer_text": "© 2025 Dragline. 한국 중고 건설기계.",
+  "search_label": "검색",
+  "search_placeholder": "브랜드 또는 모델 검색…",
+  "sort_label": "정렬",
+  "sort_default": "최신순",
+  "sort_price_asc": "낮은 가격순",
+  "sort_price_desc": "높은 가격순",
+  "sort_year_desc": "연식: 최신순",
+  "sort_year_asc": "연식: 오래된순",
+  "hide_sold": "판매완료 숨기기",
+  "show_more": "더 보기",
+  "badge_new": "신규",
+  "similar_title": "비슷한 매물",
+  "share_button": "공유",
+  "share_copied": "링크가 복사되었습니다",
+  "share_failed": "링크 복사에 실패했습니다",
+  "error_loading": "데이터를 불러오지 못했습니다. 인터넷 연결을 확인해 주세요.",
+  "error_render": "문제가 발생했습니다. 페이지를 새로고침해 주세요.",
+  "retry": "다시 시도",
+  "unit_mln_krw": "백만 ₩"
 }

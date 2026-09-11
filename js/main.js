@@ -1,64 +1,29 @@
-// Replace with your Google Sheet ID from the URL:
-// https://docs.google.com/spreadsheets/d/SHEET_ID/edit
-const SHEET_ID = '1izy_C-QA3Pm6SKSpjDkGTgGmcBouEvu2cU4JmWyAdy0';
-const GVIZ_URL = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:json&sheet=Sheet1`;
-
-async function getListings() {
-  const res  = await fetch(GVIZ_URL);
-  const text = await res.text();
-  const data = JSON.parse(text.slice(text.indexOf('{'), text.lastIndexOf('}') + 1));
-
-  return (data.table.rows || []).map(row => {
-    const c = row.c || [];
-    const v = (i, def = '') => {
-      try { const cell = c[i]; return (cell && cell.v !== null && cell.v !== undefined) ? cell.v : def; }
-      catch { return def; }
-    };
-    const s = i => {
-      const val = v(i);
-      if (val === '' || val == null) return '';
-      if (typeof val === 'number' && Number.isInteger(val)) return String(val);
-      return String(val).trim();
-    };
-
-    const rawId = v(0);
-    if (rawId === '' || rawId == null) return null;
-
-    return {
-      id:                s(0),
-      category:          s(1),
-      brand:             s(2),
-      model:             s(3),
-      year:              v(4) != null && v(4) !== '' ? Number(v(4)) : null,
-      hours:             v(5) != null && v(5) !== '' ? Number(v(5)) : null,
-      condition:         s(6),
-      compatible_models: s(7),
-      price_krw:         Number(v(8)) || 0,
-      location_kr:       s(9),
-      status:            s(10) || 'available',
-      name_kr:           s(11),
-      name_uz:           s(12),
-      name_ru:           s(13),
-      name_en:           s(14),
-      desc_kr:           s(15),
-      desc_uz:           s(16),
-      desc_ru:           s(17),
-      desc_en:           s(18),
-      photos:            s(19),
-    };
-  }).filter(Boolean);
-}
+const PAGE_SIZE = 12;
 
 let allListings = [];
 let filteredListings = [];
+let visibleCount = PAGE_SIZE;
+let newIds = new Set();
 
 async function initCatalog() {
-  await Promise.all([fetchRate(), initI18n()]);
+  try {
+    await Promise.all([fetchRate(), initI18n()]);
+    allListings = await fetchListings();
+  } catch (err) {
+    showErrorState('catalog-status');
+    return;
+  }
 
-  allListings = await getListings();
-  populateBrandFilter();
-  applyFilters();
-  setupFilterListeners();
+  newIds = computeNewIds(allListings);
+  try {
+    populateBrandFilter();
+    applyFilters();
+    setupFilterListeners();
+    document.getElementById('catalog-status').style.display = 'none';
+  } catch (err) {
+    console.error('Dragline: failed to render catalog', err);
+    showErrorState('catalog-status', 'error_render');
+  }
 }
 
 function populateBrandFilter() {
@@ -77,71 +42,59 @@ function applyFilters() {
   const brand    = document.getElementById('filter-brand').value;
   const minM     = parseFloat(document.getElementById('filter-price-min').value) || 0;
   const maxM     = parseFloat(document.getElementById('filter-price-max').value) || Infinity;
+  const query    = document.getElementById('filter-search').value.trim().toLowerCase();
+  const hideSold = document.getElementById('filter-hide-sold').checked;
+  const sortBy   = document.getElementById('filter-sort').value;
 
   filteredListings = allListings.filter(l => {
     if (category && l.category !== category) return false;
     if (brand    && l.brand    !== brand)    return false;
     const m = l.price_krw / 1_000_000;
     if (m < minM || m > maxM) return false;
+    if (hideSold && l.status === 'sold') return false;
+    if (query) {
+      const name = (l[`name_${currentLang}`] || l.name_en || '').toLowerCase();
+      const hay  = `${l.brand} ${l.model} ${name}`.toLowerCase();
+      if (!hay.includes(query)) return false;
+    }
     return true;
   });
 
+  sortListings(sortBy);
+  visibleCount = PAGE_SIZE;
   renderCards();
   updateCount();
 }
 
+function sortListings(sortBy) {
+  switch (sortBy) {
+    case 'price_asc':  filteredListings.sort((a, b) => a.price_krw - b.price_krw); break;
+    case 'price_desc': filteredListings.sort((a, b) => b.price_krw - a.price_krw); break;
+    case 'year_desc':  filteredListings.sort((a, b) => (b.year || 0) - (a.year || 0)); break;
+    case 'year_asc':   filteredListings.sort((a, b) => (a.year || 9999) - (b.year || 9999)); break;
+    default:           filteredListings.reverse(); // newest (last added in sheet) first
+  }
+}
+
 function renderCards() {
-  const grid      = document.getElementById('listings-grid');
-  const noResults = document.getElementById('no-results');
+  const grid         = document.getElementById('listings-grid');
+  const noResults     = document.getElementById('no-results');
+  const showMoreWrap = document.getElementById('show-more-wrap');
 
   if (!filteredListings.length) {
     grid.innerHTML = '';
     noResults.style.display = 'block';
+    showMoreWrap.style.display = 'none';
     return;
   }
 
   noResults.style.display = 'none';
-  grid.innerHTML = filteredListings.map(cardHTML).join('');
+  grid.innerHTML = filteredListings.slice(0, visibleCount).map(cardHTML).join('');
+  showMoreWrap.style.display = visibleCount < filteredListings.length ? 'block' : 'none';
 }
 
 function cardHTML(l) {
-  const name  = l[`name_${currentLang}`] || l.name_en;
-  const photo = l.photos.split(',')[0].trim();
-  const usd   = krwToUsd(l.price_krw);
-
-  const catKey = l.category === 'excavator' ? 'filter_excavators'
-               : l.category === 'parts'     ? 'filter_parts'
-               :                              'filter_other';
-
-  const badge = l.status !== 'available'
-    ? `<span class="badge badge--${l.status}">${t('card_' + l.status)}</span>`
-    : '';
-
-  const meta = [];
-  if (l.year)  meta.push(`${l.year} ${t('card_year')}`);
-  if (l.hours) meta.push(`${l.hours.toLocaleString()} ${t('card_hours')}`);
-
-  return `
-<article class="card${l.status !== 'available' ? ' card--inactive' : ''}"
-         onclick="location.href='listing.html?id=${l.id}'"
-         role="link" tabindex="0"
-         onkeydown="if(event.key==='Enter')location.href='listing.html?id=${l.id}'">
-  <div class="card__img-wrap">
-    <img class="card__img" src="${photo}" alt="${name}" loading="lazy">
-    <span class="card__cat">${t(catKey)}</span>
-    ${badge}
-  </div>
-  <div class="card__body">
-    <div class="card__brand">${l.brand} · ${l.model}</div>
-    <h3 class="card__name">${name}</h3>
-    ${meta.length ? `<div class="card__meta">${meta.join(' · ')}</div>` : ''}
-    <div class="card__price">
-      <span class="card__price-main">${formatKrw(l.price_krw)}</span>
-      <span class="card__price-usd">${formatUsd(usd)}</span>
-    </div>
-    <div class="btn btn--outline">${t('card_details')}</div>
-  </div>
-</article>`;
+  return buildCardHTML(l, { asLink: false, showMeta: true, showDetailsButton: true, newIds });
 }
 
 function updateCount() {
@@ -150,19 +103,26 @@ function updateCount() {
 }
 
 function setupFilterListeners() {
-  ['filter-category', 'filter-brand'].forEach(id => {
+  ['filter-category', 'filter-brand', 'filter-sort'].forEach(id => {
     document.getElementById(id).addEventListener('change', applyFilters);
   });
-  ['filter-price-min', 'filter-price-max'].forEach(id => {
+  ['filter-price-min', 'filter-price-max', 'filter-search'].forEach(id => {
     document.getElementById(id).addEventListener('input', applyFilters);
+  });
+  document.getElementById('filter-hide-sold').addEventListener('change', applyFilters);
+  document.getElementById('show-more-btn').addEventListener('click', () => {
+    visibleCount += PAGE_SIZE;
+    renderCards();
   });
   document.getElementById('filter-reset').addEventListener('click', () => {
     ['filter-category', 'filter-brand'].forEach(id => {
       document.getElementById(id).value = '';
     });
-    ['filter-price-min', 'filter-price-max'].forEach(id => {
+    ['filter-price-min', 'filter-price-max', 'filter-search'].forEach(id => {
       document.getElementById(id).value = '';
     });
+    document.getElementById('filter-sort').value = 'default';
+    document.getElementById('filter-hide-sold').checked = false;
     applyFilters();
   });
 }

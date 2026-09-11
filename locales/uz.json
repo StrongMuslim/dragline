@@ -1,6 +1,7 @@
 {
   "site_name": "Dragline",
   "tagline": "Koreyadagi ishlatilgan texnika",
+  "hero_sub": "Ekskavatorlar, ehtiyot qismlar va texnika — O'zbekiston va Qirg'izistonga to'g'ridan-to'g'ri yetkazib berish",
   "nav_catalog": "Katalog",
   "nav_about": "Biz haqimizda",
   "filter_category": "Kategoriya",
@@ -52,5 +53,24 @@
   "about_contact_text": "Biz bilan bog'laning — barcha savollaringizga javob berib, yetkazib berish narxini hisoblaymiz.",
   "no_results": "Hech narsa topilmadi — filtrlarga qayta ko'ring",
   "loading": "Yuklanmoqda...",
-  "footer_text": "© 2025 Dragline. Koreyadagi ishlatilgan texnika."
+  "footer_text": "© 2025 Dragline. Koreyadagi ishlatilgan texnika.",
+  "search_label": "Qidiruv",
+  "search_placeholder": "Brend yoki model bo'yicha qidirish…",
+  "sort_label": "Saralash",
+  "sort_default": "Avval yangilari",
+  "sort_price_asc": "Narx: arzondan qimmatga",
+  "sort_price_desc": "Narx: qimmatdan arzonga",
+  "sort_year_desc": "Yil: yangidan eskiga",
+  "sort_year_asc": "Yil: eskidan yangiga",
+  "hide_sold": "Sotilganlarni yashirish",
+  "show_more": "Yana ko'rsatish",
+  "badge_new": "Yangi",
+  "similar_title": "O'xshash e'lonlar",
+  "share_button": "Ulashish",
+  "share_copied": "Havola nusxalandi",
+  "share_failed": "Havolani nusxalab bo'lmadi",
+  "error_loading": "Ma'lumotlarni yuklab bo'lmadi. Internet aloqasini tekshiring.",
+  "error_render": "Nimadir noto'g'ri ketdi. Sahifani yangilab ko'ring.",
+  "retry": "Qayta urinish",
+  "unit_mln_krw": "mln ₩"
 }

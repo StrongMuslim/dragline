@@ -40,9 +40,14 @@ cloudinary.config(
     api_secret=os.getenv('CLOUDINARY_API_SECRET')
 )
 
+# Ordered by how often they show up on the Korean used market
 BRAND_SUGGESTIONS = [
-    'Hyundai', 'Doosan', 'Yanmar', 'Kobelco',
-    'Volvo', 'Caterpillar', 'Komatsu', 'Daewoo', 'Hitachi', 'Samsung'
+    'Doosan', 'Volvo', 'Hyundai', 'Kobelco',
+    'Komatsu', 'Caterpillar', 'Hitachi', 'Kubota',
+    'Takeuchi', 'Yanmar', 'Bobcat', 'JCB',
+    'Sumitomo', 'Case', 'Sany', 'Liebherr',
+    'Daewoo', 'Samsung',      # legacy Korean — Daewoo→Doosan, Samsung→Volvo
+    'Soosan', 'Everdigm',     # Korean attachment/breaker makers (parts)
 ]
 
 logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.INFO)
@@ -362,7 +367,9 @@ async def add_cat(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text("Выберите из кнопок ниже.")
         return ADD_CAT
     context.user_data['new_listing']['category'] = cat
-    brand_rows = [[b] for b in BRAND_SUGGESTIONS] + [["Другая марка"], ["Отмена"]]
+    # two per row — 20 brands one-per-row makes an unusably tall keyboard
+    brand_rows = [BRAND_SUGGESTIONS[i:i + 2] for i in range(0, len(BRAND_SUGGESTIONS), 2)]
+    brand_rows += [["Другая марка"], ["Отмена"]]
     await update.message.reply_text(
         "🏭 Выберите марку (или 'Другая марка'):",
         reply_markup=ReplyKeyboardMarkup(brand_rows, resize_keyboard=True)
@@ -464,26 +471,30 @@ async def add_compat(update: Update, context: ContextTypes.DEFAULT_TYPE):
     context.user_data['new_listing']['compatible_models'] = '' if text == "Пропустить" else text
     context.user_data['new_listing']['photos_list'] = []
     await update.message.reply_text(
-        "📸 Отправьте фото (можно несколько).\n"
+        "📸 Отправьте фото (можно несколько) или пришлите ссылку на фото.\n"
         "Когда все загрузите — нажмите <b>Готово</b>.",
         parse_mode='HTML',
         reply_markup=ReplyKeyboardMarkup([["Готово"], ["Отмена"]], resize_keyboard=True)
     )
     return ADD_PHOTOS_URL
 
+def _upload_photo_bytes(file_bytes: bytes) -> str:
+    """Upload raw photo bytes to Cloudinary (resized/optimized). Returns secure_url."""
+    result = cloudinary.uploader.upload(
+        file_bytes,
+        folder="dragline",
+        transformation=[{"width": 1200, "height": 900, "crop": "limit", "quality": "auto"}]
+    )
+    return result['secure_url']
+
 async def add_photos_url(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    # Photo received — upload to Cloudinary
+    # Photo received via Telegram — upload to Cloudinary
     if update.message.photo:
         photo = update.message.photo[-1]
         file = await photo.get_file()
         file_bytes = await file.download_as_bytearray()
         try:
-            result = cloudinary.uploader.upload(
-                bytes(file_bytes),
-                folder="dragline",
-                transformation=[{"width": 1200, "height": 900, "crop": "limit", "quality": "auto"}]
-            )
-            url = result['secure_url']
+            url = _upload_photo_bytes(bytes(file_bytes))
             context.user_data['new_listing']['photos_list'].append(url)
             count = len(context.user_data['new_listing']['photos_list'])
             await update.message.reply_text(
@@ -510,7 +521,23 @@ async def add_photos_url(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
         return ADD_NAME_RU
 
-    await update.message.reply_text("Отправьте фото или нажмите Готово.")
+    # Plain-text photo URL (e.g. copied from a source listing) — download & re-upload
+    if text.startswith('http://') or text.startswith('https://'):
+        try:
+            r = requests.get(text, timeout=15)
+            r.raise_for_status()
+            url = _upload_photo_bytes(r.content)
+            context.user_data['new_listing']['photos_list'].append(url)
+            count = len(context.user_data['new_listing']['photos_list'])
+            await update.message.reply_text(
+                f"✅ Фото {count} загружено по ссылке.\nОтправьте ещё или нажмите <b>Готово</b>.",
+                parse_mode='HTML'
+            )
+        except Exception as e:
+            await update.message.reply_text(f"❌ Не удалось скачать по ссылке: {e}")
+        return ADD_PHOTOS_URL
+
+    await update.message.reply_text("Отправьте фото, ссылку на фото или нажмите Готово.")
     return ADD_PHOTOS_URL
 
 async def add_name_ru(update: Update, context: ContextTypes.DEFAULT_TYPE):

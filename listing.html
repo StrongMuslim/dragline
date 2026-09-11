@@ -4,6 +4,11 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Dragline</title>
+  <meta name="description" content="Used excavators, parts and heavy machinery from South Korea. Shipping to Uzbekistan, Kyrgyzstan and CIS countries.">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="Dragline">
+  <meta property="og:title" content="Dragline — Used heavy equipment from Korea">
+  <meta property="og:description" content="Used excavators, parts and heavy machinery from South Korea. Shipping to Uzbekistan, Kyrgyzstan and CIS countries.">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Noto+Sans+KR:wght@400;500;700&display=swap" rel="stylesheet">
@@ -36,7 +41,12 @@
       <span data-i18n="listing_back">← Back to catalog</span>
     </a>
 
-    <div class="listing-layout">
+    <div class="catalog-status" id="listing-status-box">
+      <div class="spinner"></div>
+      <p data-i18n="loading">Loading...</p>
+    </div>
+
+    <div class="listing-layout" id="listing-layout" style="display:none">
 
       <!-- Gallery -->
       <div class="gallery">
@@ -51,7 +61,12 @@
 
         <div class="listing-title-row">
           <h1 class="listing-title" id="listing-title"></h1>
-          <span class="status-pill" id="listing-status"></span>
+          <div class="title-row-actions">
+            <span class="status-pill" id="listing-status"></span>
+            <button class="share-btn" id="share-btn" data-i18n-title="share_button" title="Share">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.6" y1="13.5" x2="15.4" y2="17.5"/><line x1="15.4" y1="6.5" x2="8.6" y2="10.5"/></svg>
+            </button>
+          </div>
         </div>
 
         <div class="price-block">
@@ -92,8 +107,20 @@
 
       </div>
     </div>
+
+    <div class="similar-section" id="similar-section" style="display:none">
+      <div class="similar-title" data-i18n="similar_title">Similar listings</div>
+      <div class="similar-grid" id="similar-grid"></div>
+    </div>
   </div>
 </main>
+
+<div class="lightbox" id="lightbox">
+  <button class="lightbox__close" id="lightbox-close" aria-label="Close">&times;</button>
+  <button class="lightbox__nav lightbox__nav--prev" id="lightbox-prev" aria-label="Previous">‹</button>
+  <img class="lightbox__img" id="lightbox-img" src="" alt="">
+  <button class="lightbox__nav lightbox__nav--next" id="lightbox-next" aria-label="Next">›</button>
+</div>
 
 <footer class="footer">
   <span data-i18n="footer_text">© 2025 Dragline. Used heavy equipment from Korea.</span>
@@ -101,6 +128,7 @@
 
 <script src="js/i18n.js"></script>
 <script src="js/currency.js"></script>
+<script src="js/shared.js"></script>
 <script src="js/listing.js"></script>
 </body>
 </html>

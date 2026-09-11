@@ -1,6 +1,7 @@
 {
   "site_name": "Dragline",
   "tagline": "Used heavy equipment from Korea",
+  "hero_sub": "Excavators, parts and heavy machinery — direct shipping to Uzbekistan & Kyrgyzstan",
   "nav_catalog": "Catalog",
   "nav_about": "About",
   "filter_category": "Category",
@@ -52,5 +53,24 @@
   "about_contact_text": "Contact us — we'll answer all questions and calculate delivery costs.",
   "no_results": "Nothing found — try adjusting the filters",
   "loading": "Loading...",
-  "footer_text": "© 2025 Dragline. Used heavy equipment from Korea."
+  "footer_text": "© 2025 Dragline. Used heavy equipment from Korea.",
+  "search_label": "Search",
+  "search_placeholder": "Search by brand or model…",
+  "sort_label": "Sort",
+  "sort_default": "Newest first",
+  "sort_price_asc": "Price: low to high",
+  "sort_price_desc": "Price: high to low",
+  "sort_year_desc": "Year: newest",
+  "sort_year_asc": "Year: oldest",
+  "hide_sold": "Hide sold",
+  "show_more": "Show more",
+  "badge_new": "New",
+  "similar_title": "Similar listings",
+  "share_button": "Share",
+  "share_copied": "Link copied",
+  "share_failed": "Couldn't copy link",
+  "error_loading": "Couldn't load data. Please check your connection.",
+  "error_render": "Something went wrong. Try refreshing the page.",
+  "retry": "Retry",
+  "unit_mln_krw": "mln ₩"
 }

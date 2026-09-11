@@ -5,6 +5,10 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Dragline — Korean Heavy Equipment</title>
   <meta name="description" content="Used excavators, parts and heavy machinery from South Korea. Shipping to Uzbekistan, Kyrgyzstan and CIS countries.">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="Dragline">
+  <meta property="og:title" content="Dragline — Used heavy equipment from Korea">
+  <meta property="og:description" content="Used excavators, parts and heavy machinery from South Korea. Shipping to Uzbekistan, Kyrgyzstan and CIS countries.">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Noto+Sans+KR:wght@400;500;700&display=swap" rel="stylesheet">
@@ -35,12 +39,18 @@
   <section class="hero">
     <div class="hero__inner">
       <h1 class="hero__title"><em>Dragline</em> — <span data-i18n="tagline">Used heavy equipment from Korea</span></h1>
-      <p class="hero__sub" data-i18n="tagline">Used heavy equipment from Korea</p>
+      <p class="hero__sub" data-i18n="hero_sub">Excavators, parts and heavy machinery — direct shipping to Uzbekistan & Kyrgyzstan</p>
     </div>
   </section>
 
   <section class="filters">
     <div class="filters__inner">
+
+      <div class="filter-group filter-group--search">
+        <label for="filter-search" data-i18n="search_label">Search</label>
+        <input type="search" id="filter-search"
+               data-i18n-placeholder="search_placeholder" placeholder="Search by brand or model…">
+      </div>
 
       <div class="filter-group">
         <label for="filter-category" data-i18n="filter_category">Category</label>
@@ -59,6 +69,17 @@
         </select>
       </div>
 
+      <div class="filter-group">
+        <label for="filter-sort" data-i18n="sort_label">Sort</label>
+        <select id="filter-sort">
+          <option value="default"    data-i18n="sort_default">Newest first</option>
+          <option value="price_asc"  data-i18n="sort_price_asc">Price: low to high</option>
+          <option value="price_desc" data-i18n="sort_price_desc">Price: high to low</option>
+          <option value="year_desc"  data-i18n="sort_year_desc">Year: newest</option>
+          <option value="year_asc"   data-i18n="sort_year_asc">Year: oldest</option>
+        </select>
+      </div>
+
       <div class="filter-group" style="min-width:200px;flex:1.4">
         <label data-i18n="filter_price_label">Price (mln ₩)</label>
         <div class="filter-price-pair">
@@ -74,17 +95,30 @@
   </section>
 
   <div class="results-bar">
-    <span class="results-bar__count">
-      <span data-i18n="filter_results">Found</span>: <strong id="results-count">0</strong>
-    </span>
+    <div class="results-bar__left">
+      <span class="results-bar__count">
+        <span data-i18n="filter_results">Found</span>: <strong id="results-count">0</strong>
+      </span>
+      <label class="toggle-check">
+        <input type="checkbox" id="filter-hide-sold">
+        <span data-i18n="hide_sold">Hide sold</span>
+      </label>
+    </div>
     <button class="btn--reset" id="filter-reset" data-i18n="filter_reset">Reset</button>
   </div>
 
   <div class="listings-wrap">
+    <div class="catalog-status" id="catalog-status">
+      <div class="spinner"></div>
+      <p data-i18n="loading">Loading...</p>
+    </div>
     <div class="listings-grid" id="listings-grid"></div>
     <div class="no-results" id="no-results">
       <div class="no-results__icon">🔍</div>
       <p data-i18n="no_results">Nothing found — try adjusting the filters</p>
+    </div>
+    <div class="show-more-wrap" id="show-more-wrap" style="display:none">
+      <button class="btn--show-more" id="show-more-btn" data-i18n="show_more">Show more</button>
     </div>
   </div>
 </main>
@@ -95,6 +129,7 @@
 
 <script src="js/i18n.js"></script>
 <script src="js/currency.js"></script>
+<script src="js/shared.js"></script>
 <script src="js/main.js"></script>
 </body>
 </html>

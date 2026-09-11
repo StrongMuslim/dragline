@@ -13,7 +13,7 @@ function detectLang() {
 
 async function loadTranslations(lang) {
   try {
-    const res = await fetch(`locales/${lang}.json`);
+    const res = await fetch(`locales/${lang}.json`, { cache: 'no-store' });
     if (!res.ok) throw new Error('fetch failed');
     translations = await res.json();
     currentLang = lang;
@@ -39,6 +39,9 @@ function applyTranslations() {
   document.querySelectorAll('[data-i18n-placeholder]').forEach(el => {
     el.placeholder = t(el.dataset.i18nPlaceholder);
   });
+  document.querySelectorAll('[data-i18n-title]').forEach(el => {
+    el.title = t(el.dataset.i18nTitle);
+  });
   document.documentElement.lang = currentLang;
 }
 
@@ -58,7 +61,7 @@ function showLangPicker() {
           언어 선택 &nbsp;·&nbsp; Tilni tanlang &nbsp;·&nbsp; Выберите язык &nbsp;·&nbsp; Choose language
         </div>
         <div class="lang-picker__grid">
-          <button class="lang-picker__btn" data-lang="ko">
+          <button class="lang-picker__btn" data-lang="kr">
             <span class="lang-picker__flag">🇰🇷</span>
             <span class="lang-picker__name">한국어</span>
           </button>
